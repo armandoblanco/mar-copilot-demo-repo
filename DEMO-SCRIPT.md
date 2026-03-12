@@ -139,7 +139,101 @@ Skills como paquetes de capacidades que Copilot carga automáticamente.
 
 ---
 
-## 🎯 DEMO 5: Code Review en PRs (10 min)
+## 🎯 DEMO 5: Custom Agents con Handoffs (15 min)
+
+### Qué mostrar
+Agentes especializados que actúan como "compañeros de equipo" con roles específicos y flujos de trabajo encadenados (handoffs).
+
+### Concepto Clave
+A diferencia de los **prompts** (tareas únicas) y los **skills** (capacidades que se cargan automáticamente), los **agentes** son **personas persistentes** con:
+- Un rol definido (planificador, implementador, QA, etc.)
+- Herramientas restringidas (el security-reviewer no puede editar código)
+- Handoffs que encadenan agentes en flujos de trabajo
+
+### Diagrama del Flujo
+
+```
+@planner ──→ @implementer ──→ @test-writer
+   │              │
+   │              └──→ @security-reviewer ──→ @implementer
+   │                        (fix loop)
+   └──→ @security-reviewer
+         (revisión pre-implementación)
+
+@docs-writer (standalone)
+```
+
+### Pasos
+
+#### Parte A: Flujo completo con Handoffs (el plato fuerte)
+
+1. Muestra los archivos en `.github/agents/` al público
+2. Explica brevemente la anatomía de un agente: frontmatter YAML + prompt Markdown
+3. Muestra el frontmatter de `planner.agent.md` y señala los `handoffs`
+
+4. En VS Code, abre Copilot Chat → dropdown de agentes → selecciona **@planner**
+5. Escribe:
+
+   > "Planifica un sistema de notificaciones para usuarios. Debe soportar notificaciones por email y push, con preferencias configurables por usuario y un endpoint para marcarlas como leídas."
+
+6. **Punto a destacar**: El planner:
+   - Lee el código existente para entender la arquitectura
+   - Genera un plan detallado con modelo de datos, endpoints, consideraciones de seguridad
+   - **NO toca ningún archivo** (herramientas limitadas a `read` y `search`)
+
+7. Al terminar, aparece el botón **"Implementar Plan"** en el chat
+8. Haz clic en el botón → se abre **@implementer** con el prompt pre-cargado
+9. Opcionalmente modifica el prompt antes de enviarlo, o envíalo directamente
+
+10. **Punto a destacar**: El implementer:
+    - Recibe el contexto completo del plan
+    - Crea `src/models/notification.js`, `src/routes/notifications.js`
+    - Registra la ruta en `src/app.js`
+    - Sigue todas las convenciones del proyecto
+
+11. Al terminar, aparecen los botones **"Ejecutar Tests"** y **"Revisar Seguridad"**
+12. Haz clic en **"Ejecutar Tests"** → se abre **@test-writer**
+
+13. **Punto a destacar**: El test-writer:
+    - Solo puede escribir en `tests/`
+    - Genera tests para todos los endpoints del nuevo módulo
+    - Ejecuta `npm test` para verificar
+
+#### Parte B: Agente de Seguridad standalone
+
+1. Selecciona **@security-reviewer** del dropdown
+2. Escribe:
+
+   > "Audita el archivo src/routes/users.js"
+
+3. **Punto a destacar**: El security-reviewer:
+   - Solo puede LEER archivos (tools: `read`, `search`)
+   - Genera un reporte estructurado con severidades (🔴🟡🔵)
+   - Encuentra los 8 bugs intencionales
+   - Al terminar, ofrece el botón **"Aplicar Correcciones"** → handoff a @implementer
+
+#### Parte C: Agente de Documentación
+
+1. Selecciona **@docs-writer**
+2. Escribe:
+
+   > "Genera la documentación API completa para el módulo de usuarios"
+
+3. **Punto a destacar**: Crea `docs/api.md` con tablas de parámetros, respuestas, códigos de error
+
+### Diferencias clave: Agents vs Prompts vs Skills
+
+| | Prompts | Skills | Agents |
+|---|---------|--------|--------|
+| **Invocación** | `/nombre` manual | Automática por relevancia | `@nombre` o dropdown |
+| **Persistencia** | Una sola tarea | Se carga cuando es necesario | Persona continua |
+| **Herramientas** | Todas disponibles | Todas disponibles | Restringibles por agente |
+| **Encadenamiento** | No | No | Sí, con handoffs |
+| **Dónde funciona** | VS Code, Visual Studio | VS Code, CLI, Coding Agent | VS Code, CLI, github.com |
+
+---
+
+## 🎯 DEMO 6: Code Review en PRs (10 min)
 
 ### Qué mostrar
 Copilot como reviewer automático en Pull Requests.
@@ -203,16 +297,20 @@ gh pr create --reviewer @copilot
 | 2 | Scoped Instructions | `.github/instructions/*.instructions.md` | 5 min |
 | 3 | Prompt Files | `.github/prompts/*.prompt.md` | 10 min |
 | 4 | Agent Skills | `.github/skills/*/SKILL.md` | 10 min |
-| 5 | Code Review en PRs | `.github/copilot-review-instructions.md` | 10 min |
+| 5 | Custom Agents + Handoffs | `.github/agents/*.agent.md` | 15 min |
+| 6 | Code Review en PRs | `.github/copilot-review-instructions.md` | 10 min |
 
-**Tiempo total estimado: ~40 minutos**
+**Tiempo total estimado: ~55 minutos**
 
 ---
 
 ## 💡 Tips para la Demo
 
 - Usa **Agent Mode** (no Ask mode) para las demos 3 y 4
+- Para la demo de agentes (Demo 5), usa el **dropdown de agentes** en Copilot Chat
+- Los handoffs aparecen como botones al final de la respuesta del agente
 - Si Copilot no detecta un skill automáticamente, puedes escribir `/skills` para invocarlo
 - El Code Review funciona mejor con PRs que tengan cambios sustanciales
 - Los bugs intencionales en `users.js` están documentados con comentarios `// 🔴 BUG`
 - Puedes borrar los comentarios de bugs antes de la demo para hacerlo más realista
+- Los agentes también funcionan en el **Copilot Coding Agent** en github.com: asigna un issue a Copilot y selecciona el agente desde el dropdown

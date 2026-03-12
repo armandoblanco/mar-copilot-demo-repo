@@ -10,6 +10,7 @@ Este repositorio es una **demo práctica** para mostrar las capacidades de perso
 | **Scoped Instructions** | `.github/instructions/*.instructions.md` | Reglas por tipo de archivo |
 | **Prompt Files** | `.github/prompts/*.prompt.md` | Comandos reutilizables (`/comando`) |
 | **Agent Skills** | `.github/skills/*/SKILL.md` | Capacidades especializadas con scripts |
+| **Custom Agents** | `.github/agents/*.agent.md` | Agentes especializados con handoffs |
 | **Code Review** | PR → Reviewers → Copilot | Review automático en Pull Requests |
 
 ## 📁 Estructura del Proyecto
@@ -26,11 +27,17 @@ copilot-demo-repo/
 │   │   ├── create-endpoint.prompt.md    # ⑤ Prompt: crear endpoint REST
 │   │   ├── code-review.prompt.md        # ⑥ Prompt: revisar código
 │   │   └── generate-tests.prompt.md     # ⑦ Prompt: generar tests
+│   ├── agents/
+│   │   ├── planner.agent.md             # ⑧ Agente: planificador de features
+│   │   ├── implementer.agent.md         # ⑨ Agente: implementador de código
+│   │   ├── security-reviewer.agent.md   # ⑩ Agente: auditor de seguridad
+│   │   ├── test-writer.agent.md         # ⑪ Agente: escritor de tests
+│   │   └── docs-writer.agent.md         # ⑫ Agente: documentación
 │   └── skills/
 │       ├── api-endpoint/
-│       │   └── SKILL.md                 # ⑧ Skill: crear endpoints REST
+│       │   └── SKILL.md                 # ⑬ Skill: crear endpoints REST
 │       └── unit-testing/
-│           └── SKILL.md                 # ⑨ Skill: framework de testing
+│           └── SKILL.md                 # ⑭ Skill: framework de testing
 ├── src/
 │   ├── app.js                           # Express app principal
 │   ├── routes/
@@ -75,7 +82,43 @@ copilot-demo-repo/
 3. Pide: *"Genera tests para el módulo de usuarios"*
 4. Copilot detecta el skill `unit-testing`
 
-### Demo 5: Code Review en PRs (10 min)
+### Demo 5: Custom Agents con Handoffs (15 min)
+
+Los agentes son "compañeros especializados" que puedes invocar por nombre y encadenar en flujos de trabajo.
+
+**Flujo de handoffs del proyecto:**
+```
+@planner → @implementer → @test-writer
+                ↓
+        @security-reviewer
+```
+
+1. En VS Code, abre el dropdown de agentes en Copilot Chat
+2. Selecciona **@planner** y escribe:
+
+   > "Planifica un módulo CRUD para gestionar pedidos (orders) con userId, productos, total, estado y dirección de envío"
+
+3. El planner genera un plan detallado SIN tocar código
+4. Al terminar, aparece el botón **"Implementar Plan"** → hace handoff a **@implementer**
+5. El implementer crea los archivos siguiendo el plan
+6. Al terminar, aparece **"Ejecutar Tests"** → hace handoff a **@test-writer**
+7. El test-writer genera tests completos en `tests/`
+
+**Demo del agente de seguridad (standalone):**
+1. Selecciona **@security-reviewer** y escribe:
+
+   > "Analiza src/routes/users.js"
+
+2. Genera un reporte con los 8 bugs intencionales clasificados por severidad
+
+**Demo del agente de documentación:**
+1. Selecciona **@docs-writer** y escribe:
+
+   > "Genera la documentación API para todos los endpoints de usuarios"
+
+2. Crea `docs/api.md` con documentación completa
+
+### Demo 6: Code Review en PRs (10 min)
 
 1. Crea una rama: `git checkout -b feature/add-products`
 2. Agrega código con errores intencionales (ya incluido en el repo)
