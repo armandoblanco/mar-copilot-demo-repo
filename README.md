@@ -1,4 +1,4 @@
-# 🤖 GitHub Copilot Demo: Skills, Prompts & Code Review
+# 🤖 GitHub Copilot Demo: Skills, Prompts, Agents & Code Review
 
 Este repositorio es una **demo práctica** para mostrar las capacidades de personalización de GitHub Copilot en un solo repo.
 
@@ -12,6 +12,219 @@ Este repositorio es una **demo práctica** para mostrar las capacidades de perso
 | **Agent Skills** | `.github/skills/*/SKILL.md` | Capacidades especializadas con scripts |
 | **Custom Agents** | `.github/agents/*.agent.md` | Agentes especializados con handoffs |
 | **Code Review** | PR → Reviewers → Copilot | Review automático en Pull Requests |
+
+---
+
+## 🧩 ¿Cómo se relacionan entre sí?
+
+Copilot tiene un sistema de personalización por capas. Cada pieza tiene un propósito distinto y se complementan:
+
+```mermaid
+graph TD
+    subgraph SIEMPRE["🔵 Se aplican SIEMPRE automáticamente"]
+        CI["📄 copilot-instructions.md<br/><i>Reglas globales del repo</i>"]
+        SI["📂 instructions/*.instructions.md<br/><i>Reglas por tipo de archivo</i>"]
+    end
+
+    subgraph MANUAL["🟣 Se invocan MANUALMENTE"]
+        PF["⚡ prompts/*.prompt.md<br/><i>Tareas reutilizables con /comando</i>"]
+        AG["🤖 agents/*.agent.md<br/><i>Personas especializadas con @nombre</i>"]
+    end
+
+    subgraph AUTO["🟢 Se cargan AUTOMÁTICAMENTE cuando son relevantes"]
+        SK["🧠 skills/*/SKILL.md<br/><i>Capacidades con scripts y recursos</i>"]
+    end
+
+    subgraph PR["🔴 Se activa en PULL REQUESTS"]
+        CR["👀 copilot-review-instructions.md<br/><i>Reglas para Code Review</i>"]
+    end
+
+    CI --> PF
+    CI --> AG
+    CI --> SK
+    CI --> CR
+    SI --> PF
+    SI --> AG
+    SI --> SK
+```
+
+> **Las instrucciones globales y scoped son la base.** Se inyectan automáticamente en cualquier interacción con Copilot, ya sea al usar un prompt, un agente, un skill, o un code review.
+
+---
+
+## 🔄 Flujo de Custom Agents con Handoffs
+
+Los agentes funcionan como un **equipo de especialistas** que se pasan el trabajo entre sí. Cada uno tiene un rol, herramientas restringidas, y botones de handoff que aparecen al final de su respuesta:
+
+```mermaid
+graph LR
+    P["🧠 @planner<br/><b>Solo lee, no edita</b><br/><i>tools: search, fetch</i>"]
+    I["⚡ @implementer<br/><b>Crea y edita código</b><br/><i>tools: read, edit, create, terminal</i>"]
+    T["🧪 @test-writer<br/><b>Solo escribe en tests/</b><br/><i>tools: read, edit, create, terminal</i>"]
+    S["🔒 @security-reviewer<br/><b>Solo lectura</b><br/><i>tools: read, search</i>"]
+    D["📝 @docs-writer<br/><b>Solo documentación</b><br/><i>tools: read, edit, create</i>"]
+
+    P -->|"🔘 Implementar Plan"| I
+    P -->|"🔘 Revisar Seguridad"| S
+    I -->|"🔘 Ejecutar Tests"| T
+    I -->|"🔘 Revisar Seguridad"| S
+    S -->|"🔘 Aplicar Correcciones"| I
+    T -->|"🔘 Revisar Seguridad"| S
+
+    style P fill:#3b82f6,stroke:#1e40af,color:#fff
+    style I fill:#8b5cf6,stroke:#6d28d9,color:#fff
+    style T fill:#10b981,stroke:#047857,color:#fff
+    style S fill:#ef4444,stroke:#b91c1c,color:#fff
+    style D fill:#f59e0b,stroke:#d97706,color:#fff
+```
+
+### Flujo principal de la demo
+
+```mermaid
+sequenceDiagram
+    actor Dev as 👨‍💻 Developer
+    participant P as 🧠 @planner
+    participant I as ⚡ @implementer
+    participant T as 🧪 @test-writer
+    participant S as 🔒 @security-reviewer
+
+    Dev->>P: "Planifica un sistema de notificaciones"
+    activate P
+    P-->>P: Lee código existente
+    P-->>P: Genera plan detallado
+    P->>Dev: 📋 Plan + botones de handoff
+    deactivate P
+
+    Dev->>I: 🔘 Click "Implementar Plan"
+    activate I
+    I-->>I: Crea modelo, rutas, validaciones
+    I-->>I: Registra en app.js
+    I->>Dev: ✅ Código implementado + botones
+    deactivate I
+
+    Dev->>T: 🔘 Click "Ejecutar Tests"
+    activate T
+    T-->>T: Lee código fuente (no modifica)
+    T-->>T: Genera tests en tests/
+    T-->>T: Ejecuta npm test
+    T->>Dev: ✅ Tests pasando
+    deactivate T
+
+    Dev->>S: 🔘 Click "Revisar Seguridad"
+    activate S
+    S-->>S: Audita código (solo lectura)
+    S->>Dev: 🔒 Reporte con severidades
+    deactivate S
+
+    Dev->>I: 🔘 Click "Aplicar Correcciones"
+    activate I
+    I-->>I: Aplica fixes de seguridad
+    I->>Dev: ✅ Vulnerabilidades corregidas
+    deactivate I
+```
+
+---
+
+## 🔍 Flujo del Code Review en PRs
+
+```mermaid
+sequenceDiagram
+    actor Dev as 👨‍💻 Developer
+    participant GH as GitHub.com
+    participant CR as 🤖 Copilot Review
+    participant CA as 🤖 Coding Agent
+
+    Dev->>GH: Crea Pull Request
+    Dev->>GH: Agrega Copilot como Reviewer
+
+    activate CR
+    GH->>CR: Envía diff + copilot-review-instructions.md
+    CR-->>CR: Analiza seguridad, lógica, errores, estilo
+    CR->>GH: Deja comentarios con sugerencias
+    deactivate CR
+
+    GH->>Dev: Notificación de comentarios
+
+    alt Aceptar sugerencia simple
+        Dev->>GH: Click "Apply suggestion"
+        GH->>GH: Commit automático con el fix
+    else Implementar sugerencia compleja
+        Dev->>GH: Click "Implement suggestion"
+        GH->>CA: Coding Agent crea PR con los fixes
+        CA->>Dev: PR lista para review
+    end
+```
+
+---
+
+## ❓ ¿Cuándo usar cada uno?
+
+```mermaid
+graph TD
+    Q{"❓ ¿Qué necesitas?"}
+    Q -->|"Reglas que aplican<br/>a TODO el repo"| INS["📄 <b>Instructions</b><br/>copilot-instructions.md"]
+    Q -->|"Reglas solo para ciertos<br/>tipos de archivo"| SINSTR["📂 <b>Scoped Instructions</b><br/>*.instructions.md"]
+    Q -->|"Una tarea repetitiva<br/>que invoco con /comando"| PROMPT["⚡ <b>Prompt File</b><br/>*.prompt.md"]
+    Q -->|"Un especialista con rol,<br/>tools limitadas y handoffs"| AGENT["🤖 <b>Custom Agent</b><br/>*.agent.md"]
+    Q -->|"Capacidad reutilizable con<br/>scripts y templates"| SKILL["🧠 <b>Skill</b><br/>SKILL.md"]
+    Q -->|"Revisión automática<br/>en Pull Requests"| REVIEW["👀 <b>Code Review</b><br/>PR Reviewers"]
+
+    style INS fill:#3b82f6,color:#fff
+    style SINSTR fill:#3b82f6,color:#fff
+    style PROMPT fill:#8b5cf6,color:#fff
+    style AGENT fill:#ef4444,color:#fff
+    style SKILL fill:#10b981,color:#fff
+    style REVIEW fill:#f59e0b,color:#fff
+```
+
+---
+
+## 📊 Comparativa Rápida
+
+```mermaid
+graph LR
+    subgraph "📋 Instructions"
+        direction TB
+        I1["✅ Automáticas"]
+        I2["✅ Globales o por archivo"]
+        I3["❌ No invocables"]
+        I4["❌ Sin encadenamiento"]
+    end
+
+    subgraph "⚡ Prompts"
+        direction TB
+        P1["❌ Manuales con /comando"]
+        P2["✅ Reutilizables"]
+        P3["✅ Con herramientas"]
+        P4["❌ Sin encadenamiento"]
+    end
+
+    subgraph "🧠 Skills"
+        direction TB
+        S1["✅ Automáticos por relevancia"]
+        S2["✅ Con scripts y recursos"]
+        S3["✅ Portables entre agentes"]
+        S4["❌ Sin encadenamiento"]
+    end
+
+    subgraph "🤖 Agents"
+        direction TB
+        A1["❌ Manuales con @nombre"]
+        A2["✅ Persona persistente"]
+        A3["✅ Tools restringibles"]
+        A4["✅ Handoffs entre agentes"]
+    end
+
+    subgraph "👀 Code Review"
+        direction TB
+        C1["✅ Automático o manual"]
+        C2["✅ En Pull Requests"]
+        C3["✅ Sugiere fixes aplicables"]
+        C4["✅ Handoff a Coding Agent"]
+    end
+```
+
+---
 
 ## 📁 Estructura del Proyecto
 
@@ -54,6 +267,8 @@ copilot-demo-repo/
 └── README.md
 ```
 
+---
+
 ## 🚀 Guía de la Demo
 
 ### Demo 1: Custom Instructions (5 min)
@@ -85,13 +300,6 @@ copilot-demo-repo/
 ### Demo 5: Custom Agents con Handoffs (15 min)
 
 Los agentes son "compañeros especializados" que puedes invocar por nombre y encadenar en flujos de trabajo.
-
-**Flujo de handoffs del proyecto:**
-```
-@planner → @implementer → @test-writer
-                ↓
-        @security-reviewer
-```
 
 1. En VS Code, abre el dropdown de agentes en Copilot Chat
 2. Selecciona **@planner** y escribe:
@@ -127,6 +335,8 @@ Los agentes son "compañeros especializados" que puedes invocar por nombre y enc
 5. Copilot deja comentarios con sugerencias de mejora
 6. Opcionalmente: usa "Implement suggestion" para que el Coding Agent aplique los fixes
 
+---
+
 ## ⚙️ Configurar Code Review Automático
 
 ### Opción A: Manual por PR
@@ -146,6 +356,8 @@ gh pr create --reviewer @copilot
 # Agregar Copilot a PR existente
 gh pr edit --add-reviewer @copilot
 ```
+
+---
 
 ## 📋 Requisitos
 
